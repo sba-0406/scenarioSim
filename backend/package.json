@@ -1,5 +1,5 @@
 {
-  "name": "scenariosim",
+  "name": "scenario-simulation-platform",
   "version": "1.0.0",
   "description": "A career reflection and competency insight tool with scenario-based simulations.",
   "main": "server.js",
@@ -19,8 +19,6 @@
   "author": "Antigravity",
   "license": "ISC",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.74.0",
-    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -29,8 +27,7 @@
     "express": "^4.18.2",
     "groq-sdk": "^0.37.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^7.6.3",
-    "openai": "^4.14.2"
+    "mongoose": "^7.6.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
