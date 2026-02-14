@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScenarioSim | Interactive Simulation</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #030712;
+            --glass-panel: rgba(17, 24, 39, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --neon-accent: #6366f1;
+            --neon-danger: #f43f5e;
+            --neon-success: #10b981;
+            --neon-warning: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* FIXED HEADER - Flush with Navbar */
+        .simulation-header {
+            position: fixed;
+            top: 60px;
+            /* Standard navbar height */
+            left: 0;
+            right: 0;
+            min-height: 100px;
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(15px);
+            border-bottom: 2px solid var(--neon-accent);
+            padding: 15px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .scenario-title {
+            font-weight: 700;
+            font-size: 1.1em;
+            color: var(--neon-accent);
+        }
+
+        .timer {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        /* MOOD BAR */
+        .mood-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            padding-top: 10px;
+        }
+
+        .mood-emoji {
+            font-size: 1.2em;
+        }
+
+        .mood-bar-bg {
+            flex: 1;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+            min-width: 100px;
+        }
+
+        .mood-bar-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 1s ease-in-out;
+            background: var(--neon-accent);
+            border-radius: 6px;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            position: fixed;
+            top: 175px;
+            /* Navbar + Auto Header approx */
+            bottom: 300px;
+            left: 0;
+            right: 0;
+            overflow-y: auto;
+            padding: 40px 15%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            scroll-behavior: smooth;
+        }
+
+        /* MESSAGES */
+        .msg {
+            max-width: 80%;
+            padding: 16px 24px;
+            border-radius: 20px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease-out;
+            position: relative;
+        }
+
+        .msg.ai {
+            align-self: flex-start;
+            background: var(--glass-panel);
+            border: 1px solid var(--glass-border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .msg.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        /* INTERACTION ZONE - 300px max, flexible */
+        .interaction-zone {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            min-height: 220px;
+            max-height: 300px;
+            background: #0f172a;
+            border-top: 1px solid var(--glass-border);
+            padding: 20px 15%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .mcq-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mcq-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 14px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.95em;
+            text-align: left;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            line-height: 1.6;
+        }
+
+        .mcq-btn span {
+            font-size: 1.2em;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .mcq-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--neon-accent);
+            transform: translateY(-2px);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #475569;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .divider span {
+            padding: 0 15px;
+        }
+
+        .text-input-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        .text-input-group input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-family: inherit;
+        }
+
+        .send-btn {
+            background: var(--neon-accent);
+            color: white;
+            border: none;
+            padding: 0 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* OVERLAYS */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 10000;
+            display: none;
+            align-items: flex-start;
+            /* Start from top to allow scrolling */
+            justify-content: center;
+            padding: 40px 20px;
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+            /* Enable scroll if content is long */
+        }
+
+        .modal {
+            background: #1e293b;
+            padding: 40px;
+            border-radius: 24px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal h2 {
+            margin-bottom: 15px;
+        }
+
+        .modal p {
+            color: #94a3b8;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .typing-indicator {
+            align-self: flex-start;
+            color: var(--text-muted);
+            font-size: 0.85em;
+            font-style: italic;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <div class="container"
+            style="display:flex; justify-content:space-between; align-items:center; width:100%; margin:0; max-width:none; padding:0;">
+            <h2 style="margin:0;">ScenarioSim</h2>
+            <div id="nav-links">
+                <!-- Links built via main.js -->
+            </div>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <div class="simulation-header">
+        <div class="header-top">
+            <div class="scenario-title" id="scenarioIndicator">Scenario 1 / 3</div>
+            <button class="mcq-btn"
+                style="padding: 5px 15px; width: auto; font-size: 0.8em; border-color: var(--neon-danger); color: var(--neon-danger);"
+                id="skipBtn">Skip Stakeholder</button>
+            <div class="timer" id="timer">05:00</div>
+        </div>
+        <div class="mood-container" id="metricsContainer">
+            <!-- Metrics will be injected here -->
+        </div>
+    </div>
+
+    <!-- CHAT FEED -->
+    <div class="main-content" id="chatFeed">
+        <!-- Messages loaded dynamicallly -->
+        <div class="typing-indicator" id="typingIndicator">The stakeholder is thinking...</div>
+    </div>
+
+    <!-- INTERACTION ZONE -->
+    <div class="interaction-zone">
+        <div class="mcq-options" id="mcqContainer">
+            <!-- MCQ buttons -->
+        </div>
+
+        <div class="divider">
+            <span>OR TYPE CUSTOM RESPONSE</span>
+        </div>
+
+        <div class="text-input-group">
+            <input type="text" id="customInput" placeholder="How would you handle this situation?" autocomplete="off">
+            <button class="send-btn" id="sendBtn">➤</button>
+        </div>
+    </div>
+
+    <!-- RESOLUTION OVERLAY -->
+    <div class="overlay" id="resolutionOverlay">
+        <div class="modal">
+            <div style="font-size: 4em; margin-bottom: 20px;" id="resolutionIcon">🎉</div>
+            <h2 id="resolutionTitle">Scenario Resolved</h2>
+            <p id="resolutionDesc">You successfully navigated this challenge. Moving to next scenario...</p>
+            <button class="send-btn" style="padding: 12px 30px; width: auto;" id="nextBtn">Continue ➤</button>
+        </div>
+    </div>
+
+    <script src="/js/main.js"></script>
+    <script>
+        (function () {
+            const sessionId = '<%= sessionId %>';
+            const chatFeed = document.getElementById('chatFeed');
+            const mcqContainer = document.getElementById('mcqContainer');
+            const customInput = document.getElementById('customInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const timerEl = document.getElementById('timer');
+            const metricsContainer = document.getElementById('metricsContainer');
+
+            let timeLeft = 300; // 5 minutes
+            let timerInterval;
+            let currentSession = null;
+
+            document.addEventListener('DOMContentLoaded', init);
+
+            async function init() {
+                await loadSession();
+                startTimer();
+                setupInput();
+            }
+
+            async function loadSession() {
+                try {
+                    const res = await fetch(`/dojo/session/${sessionId}`);
+                    const data = await res.json();
+                    if (data.success) {
+                        currentSession = data.data;
+
+                        // If session is already completed, show the report immediately
+                        if (currentSession.status === 'completed') {
+                            finalizeSession();
+                            return;
+                        }
+
+                        updateUI();
+                        // Initial welcome message if feed is empty
+                        if (currentSession.messages.length === 0) {
+                            renderInitialMessage();
+                        } else {
+                            currentSession.messages.forEach(m => renderMessage(m));
+                        }
+                        generateInitialMCQs();
+                    }
+                } catch (err) {
+                    console.error("Load Session Failed:", err);
+                    alert("Failed to load session details. Please check your connection.");
+                }
+            }
+
+            function updateUI() {
+                const step = currentSession.scenarioProgress.currentScenario;
+                const total = currentSession.scenarioProgress.totalScenarios;
+                document.getElementById('scenarioIndicator').textContent = `Scenario ${step} / ${total}: ${currentSession.persona.name}`;
+
+                updateMetricsDisplay(currentSession.worldState);
+            }
+
+            function updateMetricsDisplay(worldState) {
+                console.log("[DOJO] Updating Metrics:", worldState);
+                if (!worldState) return;
+
+                let html = '';
+                Object.entries(worldState).forEach(([metric, value]) => {
+                    const actualValue = Math.max(0, Math.min(100, parseInt(value) || 0));
+                    let color = '#10b981'; // Success
+                    if (actualValue < 40) color = '#f43f5e'; // Danger
+                    else if (actualValue < 70) color = '#f59e0b'; // Warning
+
+                    html += `
+                        <div style="flex: 1; min-width: 120px;">
+                            <div style="font-size: 0.7em; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 5px;">
+                                ${metric.replace(/([A-Z])/g, ' $1').trim()}
+                            </div>
+                            <div style="height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">
+                                <div style="height: 100%; width: ${actualValue}%; background: ${color}; transition: width 1s ease; box-shadow: 0 0 10px ${color}44;"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                metricsContainer.innerHTML = html;
+            }
+
+            function startTimer() {
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    const mins = Math.floor(timeLeft / 60);
+                    const secs = timeLeft % 60;
+                    timerEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        onTimeout();
+                    }
+                }, 1000);
+            }
+
+            function setupInput() {
+                sendBtn.onclick = () => handleResponse(customInput.value);
+                customInput.onkeypress = (e) => { if (e.key === 'Enter') handleResponse(customInput.value); };
+                document.getElementById('skipBtn').onclick = skipScenario;
+            }
+
+            async function skipScenario() {
+                if (!confirm("Are you sure you want to skip this stakeholder? It will be marked as unresolved in your report.")) return;
+                const btn = document.getElementById('skipBtn');
+                btn.disabled = true;
+                btn.textContent = 'Skipping...';
+                advanceScenario('skipped');
+            }
+
+            async function handleResponse(text, mcqChoice = null) {
+                if (!text && !mcqChoice) return;
+
+                // UI feedback
+                const userText = mcqChoice ? mcqChoice.text : text;
+                renderMessage({ sender: 'user', text: userText });
+                customInput.value = '';
+                mcqContainer.innerHTML = '';
+                document.getElementById('typingIndicator').style.display = 'block';
+                scrollToBottom();
+
+                try {
+                    const res = await fetch('/dojo/respond', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId, message: text, mcqChoice }),
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+
+                    document.getElementById('typingIndicator').style.display = 'none';
+
+                    if (data.success) {
+                        renderMessage({ sender: 'ai', text: data.data.message });
+                        updateMetricsDisplay(data.data.worldState);
+                        renderMCQs(data.data.mcqOptions);
+
+                        if (data.data.isResolved) {
+                            showResolution('success', data.data.isLastScenario);
+                        }
+                    }
+                } catch (err) { console.error(err); }
+            }
+
+            function renderMCQs(options) {
+                mcqContainer.innerHTML = '';
+                options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'mcq-btn';
+
+                    let impactHtml = '';
+                    if (opt.satisfies || opt.violates) {
+                        impactHtml = `
+                            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                ${opt.satisfies ? `<span style="font-size: 0.7em; background: rgba(16, 185, 129, 0.1); color: #34d399; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2);">✓ Satisfies: ${opt.satisfies}</span>` : ''}
+                                ${opt.violates ? `<span style="font-size: 0.7em; background: rgba(244, 63, 94, 0.1); color: #fb7185; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(244, 63, 94, 0.2);">⚠ Violates: ${opt.violates}</span>` : ''}
+                            </div>
+                        `;
+                    }
+
+                    btn.innerHTML = `
+                        <div style="width: 100%;">
+                            <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                <span style="font-size: 1.2em;">${getApproachEmoji(opt.approach)}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 0.95em;">${opt.text}</div>
+                                    ${impactHtml}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    btn.onclick = () => handleResponse(null, opt);
+                    mcqContainer.appendChild(btn);
+                });
+            }
+
+            function getApproachEmoji(approach) {
+                switch (approach) {
+                    case 'Relationship': return '👥';
+                    case 'Results': return '🎯';
+                    case 'Boundary': return '🛡️';
+                    default: return '💡';
+                }
+            }
+
+            async function generateInitialMCQs() {
+                // Fetch first set if empty
+                if (mcqContainer.children.length === 0) {
+                    const res = await fetch('/dojo/respond', { // This is a bit of a hack to reuse logic
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId, message: '' }), // Empty triggers MCQ generation
+                        credentials: 'include'
+                    });
+                    const d = await res.json();
+                    if (d.success) renderMCQs(d.data.mcqOptions);
+                }
+            }
+
+            function renderMessage(msg) {
+                const div = document.createElement('div');
+                div.className = `msg ${msg.sender}`;
+                div.textContent = msg.text;
+                chatFeed.insertBefore(div, document.getElementById('typingIndicator'));
+                scrollToBottom();
+            }
+
+            function renderInitialMessage() {
+                const txt = `[MISSION START] You are now in conversation with ${currentSession.persona.name}. 
+                Situation: ${currentSession.persona.briefing.situation}.
+                Can you resolve the issue?`;
+                renderMessage({ sender: 'ai', text: txt });
+            }
+
+            function scrollToBottom() {
+                chatFeed.scrollTop = chatFeed.scrollHeight;
+            }
+
+            function showResolution(type, isLast = false) {
+                clearInterval(timerInterval);
+                const overlay = document.getElementById('resolutionOverlay');
+                const title = document.getElementById('resolutionTitle');
+                const icon = document.getElementById('resolutionIcon');
+                const desc = document.getElementById('resolutionDesc');
+                const nextBtn = document.getElementById('nextBtn');
+
+                if (type === 'success') {
+                    title.textContent = "Scenario Resolved!";
+                    icon.textContent = "✅";
+                    desc.textContent = "Excellent work. You successfully appeased the stakeholder.";
+                } else {
+                    title.textContent = "Scenario Failed";
+                    icon.textContent = "⏱️";
+                    desc.textContent = "Time expired before resolution was reached.";
+                }
+
+                if (isLast || (currentSession && currentSession.scenarioProgress.currentScenario >= 3)) {
+                    nextBtn.textContent = "Finish & See Career Results";
+                } else {
+                    nextBtn.textContent = "Next Stakeholder";
+                }
+
+                overlay.style.display = 'flex';
+                nextBtn.onclick = () => advanceScenario();
+            }
+
+            async function advanceScenario(reason = null) {
+                try {
+                    const res = await fetch('/dojo/next', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId, reason: reason || (timeLeft > 0 ? 'success' : 'timeout') }),
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        if (data.data.isComplete) {
+                            finalizeSession();
+                        } else {
+                            window.location.reload();
+                        }
+                    } else {
+                        alert("Movement failed: " + (data.error || "Unknown error"));
+                        document.getElementById('skipBtn').disabled = false;
+                        document.getElementById('skipBtn').textContent = 'Skip Stakeholder';
+                    }
+                } catch (err) {
+                    console.error("Advance Error:", err);
+                    alert("System error advancing simulation. Check connection.");
+                    document.getElementById('skipBtn').disabled = false;
+                }
+            }
+
+            async function finalizeSession() {
+                try {
+                    const res = await fetch('/dojo/finalize', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId }),
+                        credentials: 'include'
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showFinalReport(data.data);
+                    } else {
+                        alert("Error generating final report: " + data.error);
+                    }
+                } catch (err) {
+                    console.error("Finalization error:", err);
+                    alert("System error finishing simulation. Please try again or check server logs.");
+                }
+            }
+
+            function showFinalReport(report) {
+                const overlay = document.getElementById('resolutionOverlay');
+                overlay.style.display = 'flex'; // Ensure visible!
+
+                let skillsHtml = '';
+                if (report.skillScores) {
+                    Object.entries(report.skillScores).forEach(([skill, score]) => {
+                        skillsHtml += `
+                            <div style="margin-bottom: 12px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 5px; color: var(--text-muted);">
+                                    <span>${skill}</span>
+                                    <span style="color: var(--neon-accent); font-weight: bold;">${score} pts</span>
+                                </div>
+                                <div class="mood-bar-bg" style="height: 6px;">
+                                    <div class="mood-bar-fill" style="width: ${Math.min(100, (score / 50) * 100)}%; background: var(--neon-accent);"></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                overlay.innerHTML = `
+                    <div class="modal" style="max-width: 600px; margin: auto;">
+                        <span style="font-size: 0.8em; color: var(--neon-accent); text-transform: uppercase; letter-spacing: 2px;">Final Assessment</span>
+                        <h1 style="font-size: 4em; margin: 10px 0 30px;">Grade: ${report.overallGrade}</h1>
+                        
+                        <div style="background: rgba(255,255,255,0.03); padding: 25px; border-radius: 16px; margin-bottom: 25px; text-align: left; border: 1px solid var(--glass-border);">
+                            <h4 style="color: var(--text-main); margin-bottom: 20px; font-size: 1.1em;">Behavioral Skill Profile</h4>
+                            ${skillsHtml}
+                        </div>
+
+                        <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 16px; margin-bottom: 30px; text-align: left; border: 1px solid rgba(99, 102, 241, 0.2);">
+                            <h4 style="color: var(--neon-accent); margin-bottom: 10px; font-size: 0.9em; text-transform: uppercase;">Expert Summary</h4>
+                            <p style="color: #cbd5e1; line-height: 1.7; font-size: 1em;">${report.recommendation}</p>
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <button onclick="window.location.href='/dojo/roles'" class="send-btn" style="padding: 16px; width: 100%; font-size: 1.1em;">
+                                Return to Roles Selection
+                            </button>
+                            <button onclick="window.location.reload()" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted); padding: 12px; border-radius: 12px; cursor: pointer;">
+                                Restart This Role
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function onTimeout() { showResolution('timeout'); }
+
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,251 @@
+const aiService = require('./aiService');
+
+// 1. ARCHETYPES (Hardcoded Goals)
+const ARCHETYPES = {
+  MANAGER: [
+    { type: 'CRISIS', goal: 'De-escalate panic and provide a clear recovery plan.', intensity: 'High' },
+    { type: 'NEGOTIATION', goal: 'Retain a high-value employee who wants to resign.', intensity: 'Medium' },
+    { type: 'PERFORMANCE', goal: 'Deliver negative feedback to a defensive employee.', intensity: 'Medium' }
+  ],
+  DEVELOPER: [
+    { type: 'TECHNICAL_DISPUTE', goal: 'Advocate for a technical decision against a stubborn senior.', intensity: 'High' },
+    { type: 'SAVING_PROJECT', goal: 'Convince a PM to cut scope to meet a deadline.', intensity: 'Medium' }
+  ]
+};
+
+// 2. Persona Generator
+exports.generatePersona = async (role) => {
+  const archetype = { type: 'GENERAL', goal: `Excel as a ${role}`, intensity: 'Medium', role };
+
+  const prompt = `System Design: Persona Generation.
+Create a detailed persona for a professional simulation.
+Target User Role: ${role}
+
+Generate a character who will OPPOSE the user.
+- Name: A realistic corporate name.
+- Role: Who are they?
+- Mood: Their initial emotional state.
+- Mission Briefing:
+    - Situation: A specific challenge relevant to ${role}.
+    - Objective: What must the user achieve?
+    - Stakes: Consequences of failure.
+- FirstMessage: An opening line that establishes the problem.
+
+Return ONLY valid JSON:
+{
+  "name": "Name",
+  "role": "Job Title",
+  "mood": "Adjective",
+  "briefing": {
+    "situation": "Context description",
+    "objective": "Clear goal",
+    "stakes": "Consequences"
+  },
+  "firstMessage": "Opening line"
+}`;
+
+  const fallback = {
+    name: "Alex Reed",
+    role: "Stakeholder",
+    mood: "Concerned",
+    briefing: {
+      situation: "There is a misunderstanding regarding project priorities.",
+      objective: "Clarify the situation and regain alignment.",
+      stakes: "Project delay and loss of trust."
+    },
+    firstMessage: "I'm not sure we're on the same page about this deadline."
+  };
+
+  try {
+    const text = await aiService.generateContent(prompt);
+    const data = aiService.extractJSON(text);
+    return { ...data, archetype };
+  } catch (e) {
+    return fallback;
+  }
+};
+
+// 3. The Actor (Chat Response)
+exports.generateResponse = async (history, persona, userRole) => {
+  const worldStateStr = persona.worldState ?
+    Object.entries(persona.worldState).map(([k, v]) => `- ${k}: ${v}/100`).join('\n') :
+    "No metrics available.";
+
+  const prompt = `Roleplay Mode: ACTIVE.
+You are roleplaying as "${persona.name}", with the job title "${persona.role}".
+You are currently in a high-stakes meeting with the ${userRole}.
+
+SCENARIO CONTEXT:
+${persona.context}
+
+YOUR CURRENT WORLD STATE:
+${worldStateStr}
+
+YOUR GOAL:
+You are a realistic stakeholder. You have your own professional agenda (the SCENARIO CONTEXT) which naturally conflicts with the ${userRole}'s perspective.
+- Be firm and stick to your goal, but stay professional.
+- Acknowledge the ${userRole}'s reasonable points, but explain the constraints that make it difficult to agree.
+- Do NOT be an unreasonable villain; be a difficult colleague/partner.
+- CRITICAL: You are NOT the ${userRole}. Do not do their job for them. You represent your own department's interests.
+
+Conversation History:
+${history.map(m => `${m.sender === 'user' ? userRole.toUpperCase() : persona.name.toUpperCase()}: ${m.text}`).join('\n')}
+
+Reply ONLY as "${persona.name}". Keep it SHORT (1-2 sentences). Be firm and challenging.
+Response:`;
+
+  try {
+    const response = await aiService.generateContent(prompt);
+    return response.trim().replace(/^"|"$/g, '');
+  } catch (e) {
+    return "...";
+  }
+};
+
+// 4. The Analyzer (Sidecar)
+exports.analyzeTurn = async (lastUserMessage, context) => {
+  const prompt = `Real-Time Analysis.
+Evaluate the User's last message: "${lastUserMessage}"
+Context: User is trying to "${context.goal}".
+Opponent is "${context.mood}".
+
+Rate the User (0-100):
+- Empathy: Did they acknowledge feelings?
+- Professionalism: Did they stay calm?
+- Strategy: did they move towards the goal?
+
+Return ONLY valid JSON:
+{
+  "empathy": 0-100,
+  "professionalism": 0-100,
+  "notes": "One short insight (max 10 words)"
+}`;
+
+  const fallback = { empathy: 50, professionalism: 50, notes: "Neutral response." };
+
+  try {
+    const text = await aiService.generateContent(prompt);
+    return aiService.extractJSON(text);
+  } catch (e) {
+    return fallback;
+  }
+};
+
+// ========================================
+// MULTI-SCENARIO DOJO SYSTEM
+// ========================================
+
+const { getCompetenciesForRole } = require('../config/roleCompetencies');
+
+// Scenario templates for each role (3 scenarios per role)
+const SCENARIO_TEMPLATES = {
+  Manager: [
+    { stakeholder: 'Angry Client', description: 'A major client is furious about a missed deadline and threatens to cancel the contract.' },
+    { stakeholder: 'Underperforming Team Member', description: 'A team member consistently misses deadlines and seems disengaged.' },
+    { stakeholder: 'Executive in Budget Crisis', description: 'The CFO demands a 30% budget cut to your department immediately.' }
+  ],
+  Developer: [
+    { stakeholder: 'Stubborn Senior Developer', description: 'A senior dev insists on a technical approach you believe is wrong.' },
+    { stakeholder: 'Stressed Project Manager', description: 'The PM wants to add more features despite the tight deadline.' },
+    { stakeholder: 'Junior Developer Struggling', description: 'A junior team member is overwhelmed and considering quitting.' }
+  ],
+  HR: [
+    { stakeholder: 'Harassment Complaint', description: 'An employee reports feeling harassed by their manager.' },
+    { stakeholder: 'Salary Negotiation', description: 'A top performer demands a 40% raise or they will leave.' },
+    { stakeholder: 'Team Conflict', description: 'Two team members refuse to work together after a public argument.' }
+  ],
+  Executive: [
+    { stakeholder: 'Board Member Questioning Strategy', description: 'A board member publicly challenges your Q3 strategy in a meeting.' },
+    { stakeholder: 'Major Client Escalation', description: 'Your biggest client CEO calls threatening to switch to a competitor.' },
+    { stakeholder: 'Union Negotiation', description: 'Union representatives demand better benefits during a cost-cutting phase.' }
+  ]
+};
+
+// Generate 3 unique scenarios for a role
+exports.generateScenarioSet = function (role) {
+  const templates = SCENARIO_TEMPLATES[role] || SCENARIO_TEMPLATES.Manager;
+  return templates.map((template, index) => ({
+    scenarioNumber: index + 1,
+    stakeholder: template.stakeholder,
+    description: template.description,
+    status: index === 0 ? 'in-progress' : 'pending',
+    moodLevel: 30, // Start with low mood (angry/tense)
+    resolution: null
+  }));
+};
+
+// 4. MCQ Option Generator
+exports.generateMCQOptions = async function (history, scenarioDescription, worldState, role) {
+  const latestInteraction = history.length > 0 ? history[history.length - 1].text : "Starting the conversation.";
+  const worldStateStr = Object.entries(worldState).map(([k, v]) => `- ${k}: ${v}/100`).join('\n');
+
+  const prompt = `You are a leadership development expert. Generate 3 distinct leadership options.
+    
+    CONTEXT:
+    - Role: ${role}
+    - Scenario: ${scenarioDescription}
+    - World State:
+    ${worldStateStr}
+    - Last Message from Stakeholder: "${latestInteraction}"
+
+    GENERATE 3 OPTIONS:
+    1. RELATIONSHIP: Focus on empathy and people.
+       - Satisfies: Long-term trust, psychological safety.
+       - Violates: Immediate efficiency or strict rules.
+    2. RESULTS: Focus on deadlines, data, and shipping.
+       - Satisfies: Project velocity, revenue, client satisfaction.
+       - Violates: Team morale or long-term quality.
+    3. BOUNDARY: Focus on standards, rules, and professional limits.
+       - Satisfies: Professional standards, legal compliance, role clarity.
+       - Violates: Short-term likability or flexibility.
+
+    GROUNDING RULES:
+    - Options must be a direct response to the last message.
+    - Sound like a real leader.
+    
+    Return ONLY a valid JSON array.
+    JSON FORMAT:
+    [
+      { 
+        "text": "The response text...", 
+        "approach": "Relationship" | "Results" | "Boundary",
+        "satisfies": "One short phrase (e.g., 'Team Trust')",
+        "violates": "One short phrase (e.g., 'Deadline Efficiency')"
+      }
+    ]`;
+
+  try {
+    const response = await aiService.generateContent(prompt);
+    return aiService.extractJSON(response);
+  } catch (e) {
+    return [
+      { text: "Let's discuss how this affects our team stability.", approach: "Relationship" },
+      { text: "We need to focus on delivering the results by the deadline.", approach: "Results" },
+      { text: "I expect us to maintain professional standards here.", approach: "Boundary" }
+    ];
+  }
+};
+
+// 5. Final Report Generator
+exports.generateFinalReport = async function (data) {
+  const skillScoresStr = Object.entries(data.skillScores).map(([k, v]) => `- ${k}: ${v} points`).join('\n');
+
+  const prompt = `You are a Senior Executive Coach. Analyze this simulation performance.
+    
+    Role: ${data.role}
+    Skill Performance:
+    ${skillScoresStr}
+    
+    Strengths Identified: ${data.strengths.join(', ')}
+    Areas for Improvement: ${data.improvements.join(', ')}
+
+    Write a professional 2-3 sentence performance summary for the user.
+    Sound insightful and encouraging. Focus on behaviors.
+    Summary:`;
+
+  try {
+    return await aiService.generateContent(prompt);
+  } catch (e) {
+    return `You demonstrated a good understanding of ${data.role} challenges. Focus on balancing your ${data.improvements[0]} with your strong ${data.strengths[0]}.`;
+  }
+};
