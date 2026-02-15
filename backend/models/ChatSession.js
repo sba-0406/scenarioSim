@@ -62,6 +62,11 @@ const ChatSessionSchema = new mongoose.Schema({
     of: Number,
     default: {}
   },
+  metricPolarity: {
+    type: Map,
+    of: String, // 'high' or 'low'
+    default: {}
+  },
   skillScores: {
     type: Map,
     of: Number,

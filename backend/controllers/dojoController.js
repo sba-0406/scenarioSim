@@ -64,6 +64,7 @@ exports.startDojoSession = async (req, res) => {
         scenarios
       },
       worldState: config.initialState,
+      metricPolarity: config.metricPolarity, // Add polarity for UI
       skillScores: skillScores,
       turnCount: 0,
       status: 'active',
@@ -308,14 +309,46 @@ exports.finalizeDojoSession = async (req, res) => {
       improvements
     });
 
+    // Calculate Performance Multiplier based on Metric Health
+    const roleConfig = require('../config/simulationConfig').roleConfigs[role];
+    const finalMetrics = Object.fromEntries(session.worldState);
+    const metricPolarity = roleConfig.metricPolarity;
+
+    let totalHealth = 0;
+    let metricCount = 0;
+
+    Object.entries(finalMetrics).forEach(([metric, value]) => {
+      const polarity = metricPolarity[metric];
+      let health = 0;
+
+      if (polarity === 'high') {
+        // Higher values are better (e.g., trust, morale)
+        health = value / 100;
+      } else if (polarity === 'low') {
+        // Lower values are better (e.g., risk, stress)
+        health = (100 - value) / 100;
+      }
+
+      totalHealth += health;
+      metricCount += 1;
+    });
+
+    const performanceMultiplier = metricCount > 0 ? totalHealth / metricCount : 1.0;
+
+    // Calculate grade with performance multiplier
+    const skillAverage = Object.values(skillScores).reduce((a, b) => a + b, 0) / Object.keys(skillScores).length;
+    const adjustedScore = (skillAverage * performanceMultiplier * 2) + 30;
+    const finalGrade = getGrade(adjustedScore);
+
     const report = {
       roleAssessed: role,
       scenariosCompleted: session.scenarioProgress.scenarios.length,
       skillScores,
       gapAnalysis: { strengths, improvements },
-      overallGrade: getGrade(Object.values(skillScores).reduce((a, b) => a + b, 0) / 2 + 30),
+      overallGrade: finalGrade,
+      performanceMultiplier: Math.round(performanceMultiplier * 100) / 100, // Store for transparency
       recommendation: summary,
-      bestSuitedRole: bestRole // Added this!
+      bestSuitedRole: bestRole
     };
 
     session.finalReport = report;

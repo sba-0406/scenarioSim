@@ -421,12 +421,26 @@
                 console.log("[DOJO] Updating Metrics:", worldState);
                 if (!worldState) return;
 
+                const polarity = currentSession.metricPolarity || {};
                 let html = '';
+
                 Object.entries(worldState).forEach(([metric, value]) => {
                     const actualValue = Math.max(0, Math.min(100, parseInt(value) || 0));
-                    let color = '#10b981'; // Success
-                    if (actualValue < 40) color = '#f43f5e'; // Danger
-                    else if (actualValue < 70) color = '#f59e0b'; // Warning
+                    const metricPolarity = polarity[metric] || 'high'; // Default to 'high' if not specified
+
+                    let color = '#10b981'; // Success (green)
+
+                    // Determine color based on polarity
+                    if (metricPolarity === 'high') {
+                        // Higher is better (e.g., trust, morale)
+                        if (actualValue < 40) color = '#f43f5e'; // Danger (red)
+                        else if (actualValue < 70) color = '#f59e0b'; // Warning (orange)
+                    } else if (metricPolarity === 'low') {
+                        // Lower is better (e.g., risk, stress)
+                        if (actualValue > 60) color = '#f43f5e'; // Danger (red) - high is bad!
+                        else if (actualValue > 30) color = '#f59e0b'; // Warning (orange)
+                        else color = '#10b981'; // Success (green) - low is good!
+                    }
 
                     html += `
                         <div style="flex: 1; min-width: 120px;">

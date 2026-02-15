@@ -1,0 +1,30 @@
+# Chat Feature Extraction Analysis
+
+- [x] Analyze existing backend files
+    - [x] Check `package.json` for dependencies <!-- id: 0 -->
+    - [x] Check `server.js` and `app.js` for initialization <!-- id: 1 -->
+    - [x] Check routes and controllers for chat logic <!-- id: 2 -->
+    - [x] Check models for data structure <!-- id: 3 -->
+- [x] Analyze existing frontend files
+    - [x] Check `dojo-simulation.ejs` for UI structure <!-- id: 4 -->
+    - [x] Check `main.js` for frontend logic <!-- id: 5 -->
+- [x] Identify missing files/components
+    - [x] Check for CSS/styling <!-- id: 6 -->
+    - [x] Check for required assets (images, icons) <!-- id: 7 -->
+    - [x] Check for configuration (e.g., AI model config) <!-- id: 8 -->
+- [x] Prepare for standalone execution
+    - [x] Comment out navbar in EJS and JS <!-- id: 13 -->
+    - [x] Ensure authentication bypass in middleware <!-- id: 14 -->
+    - [x] Fix circular paths in `backend/app.js` <!-- id: 10 -->
+    - [x] Correct project entry point in `package.json` <!-- id: 11 -->
+- [x] Debug Simulation Issues
+    - [x] Resolve "Simulations not working" by checking controller logic <!-- id: 15 -->
+    - [x] Ensure dummy user exists or bypass User dependency <!-- id: 16 -->
+    - [x] Update URI for database isolation (Recommendation) <!-- id: 17 -->
+- [x] Detailed Action Flows Documentation
+    - [x] Action 01: Dojo Initiation <!-- id: 18 -->
+    - [x] Action 02: Simulation Load <!-- id: 19 -->
+    - [x] Action 03: User Interaction <!-- id: 20 -->
+    - [x] Action 04: Scenario Advancement <!-- id: 21 -->
+    - [x] Action 05: Finalization <!-- id: 22 -->
+- [ ] Provide final recommendation to user <!-- id: 9 -->

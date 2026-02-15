@@ -8,6 +8,7 @@ const roleConfigs = {
   Developer: {
     initialState: { focus: 70, stress: 30, codeQuality: 60 },
     metrics: ['focus', 'stress', 'codeQuality'],
+    metricPolarity: { focus: 'high', stress: 'low', codeQuality: 'high' },
     skills: {
       Relationship: "Collaboration Under Pressure",
       Results: "Task Ownership",
@@ -27,6 +28,7 @@ const roleConfigs = {
   Manager: {
     initialState: { morale: 60, risk: 40, trust: 50 },
     metrics: ['morale', 'risk', 'trust'],
+    metricPolarity: { morale: 'high', risk: 'low', trust: 'high' },
     skills: {
       Relationship: "Team Stability Management",
       Results: "Delivery Control",
@@ -46,6 +48,7 @@ const roleConfigs = {
   HR: {
     initialState: { satisfaction: 60, complianceRisk: 30, retention: 70 },
     metrics: ['satisfaction', 'complianceRisk', 'retention'],
+    metricPolarity: { satisfaction: 'high', complianceRisk: 'low', retention: 'high' },
     skills: {
       Relationship: "Employee Sensitivity Handling",
       Results: "Retention Strategy Awareness",
@@ -65,6 +68,7 @@ const roleConfigs = {
   Executive: {
     initialState: { revenueHealth: 70, brandTrust: 60, strategicRisk: 40 },
     metrics: ['revenueHealth', 'brandTrust', 'strategicRisk'],
+    metricPolarity: { revenueHealth: 'high', brandTrust: 'high', strategicRisk: 'low' },
     skills: {
       Relationship: "Organizational Alignment Control",
       Results: "Financial Pressure Handling",
